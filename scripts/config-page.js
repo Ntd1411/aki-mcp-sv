@@ -9,6 +9,7 @@ const MCP_NAME = 'Aki MCP Server from local Shell & FileSystem';
 const SETTINGS_URL = 'https://claude.ai/new#settings/general';
 const GROK_SETTINGS_URL = 'https://grok.com/?_s=personality';
 const CHATGPT_SETTINGS_URL = 'https://chatgpt.com/#settings/Personalization';
+const CHATGPT_DEVMODE_URL = 'https://chatgpt.com/#settings/Security';
 const GEMINI_SETTINGS_URL = 'https://gemini.google.com/saved-info';
 const POSTMAN_SETTINGS_URL = 'https://go.postman.co/settings/me/connected-accounts';
 const POSTMAN_PROMPT = `MCP Tools: Files=find_path. Content=search_content. Agents=agy_run/kiro_read. Always use MCP tools to search files/dirs/content;
@@ -80,14 +81,17 @@ const socialLink = ([label, url, path]) =>
   `<a class="social" href="${esc(url.startsWith('mailto:') ? url : withUtm(url))}" target="_blank" rel="noopener" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="${path}"/></svg></a>`;
 
 // The one copyable-code primitive (ui.A1 Tier-2 pattern class): every command/value/inline code renders as `.copy` and click-copies. `.mono` is plain monospace text, never a copy chip — the two roles stay visually distinct so nothing masquerades as copyable.
-const copyEl = (value, hl = false) => `<code class="copy${hl ? ' hl' : ''}" title="click to copy"><span class="txt">${esc(value)}</span></code>`;
+const copyEl = (value, hl = false, id) => `<code class="copy${hl ? ' hl' : ''}"${id ? ` id="${esc(id)}"` : ''} title="click to copy"><span class="txt">${esc(value)}</span></code>`;
 
 function field(label, value, hl = false) {
   return `<div class="row"><label>${esc(label)}</label>${copyEl(value, hl)}</div>`;
 }
 
-export function renderPanel({ origin, ingress = 'funnel', client, passphrase, token, repoRoot, rulesDir, userDir, updateInfo = {}, hasGit = false, savedIngress = null }) {
+export function renderPanel({ origin, ingress = 'funnel', client, passphrase, token, accessToken, repoRoot, rulesDir, userDir, updateInfo = {}, hasGit = false, savedIngress = null }) {
   const url = origin ? `${origin}/mcp` : 'not available yet, see section 0';
+  const postmanJson = JSON.stringify({
+    mcpServers: { 'aki-mcp-sv': { url, headers: { Authorization: `Bearer ${accessToken}` } } },
+  });
   const funnelMode = ingress === 'funnel';
   // Tab 3 (Hosted domain) never becomes the active ingress here — the service it needs is a separate, not-yet-built project.
   const activeIngressTab = funnelMode ? 'tailscale' : 'owned';
@@ -206,9 +210,11 @@ ${field('Passphrase', passphrase)}
 </div>
 
 <div class="tabpane" id="tab-chatgpt">
+  <p class="lnk"><a href="${esc(CHATGPT_DEVMODE_URL)}" target="_blank" rel="noopener">↗ Enable Developer mode</a> · Settings → Security and login</p>
   <p class="lnk"><a href="${esc(CHATGPT_CONNECTOR_URL)}" target="_blank" rel="noopener">↗ Create a connector</a></p>
   <ol class="steps">
-    <li>Pick an <strong>Icon</strong> (optional — use <span class="mono">${esc(repoRoot)}/public/favicon/icon-48.png</span> or any image).</li>
+    <li>Turn on <strong>Developer mode</strong> first. OpenAI requires it to create custom MCP apps.</li>
+    <li>Pick an <strong>Icon</strong> (optional). Use ${copyEl(`${repoRoot}/public/favicon/icon-48.png`)} or any image.</li>
     <li>Enter a <strong>Name</strong> and <strong>Description</strong> (your choice).</li>
     <li>Set <strong>Connection</strong> → <strong>Server URL</strong> = MCP URL above.</li>
     <li>Tick <strong>I understand and want to continue</strong>, then <strong>Create</strong>.</li>
@@ -229,18 +235,10 @@ ${field('Passphrase', passphrase)}
 </div>
 
 <div class="tabpane" id="tab-postman">
-  <p class="helptext">Postman AI Agent (via MCP). No system-prompt feature — paste the instruction block below into each new chat.</p>
-  <p class="helptext">Postman has no OAuth redirect for third-party MCP servers, so it authenticates with a static bearer token instead — <strong>not</strong> the Passphrase above (that only gates the one-time browser consent page other clients use; <span class="mono">/mcp</span> itself only accepts a real issued access token).</p>
-  <ol class="steps">
-    <li>Connect at least one other tab above first (Claude/Grok/ChatGPT/Gemini) — completing its OAuth consent mints a real access token.</li>
-    <li>Open <span class="mono">${esc(userDir)}/tokens.json</span> and copy any hex key under <span class="mono">"access"</span> whose <span class="mono">expires</span> is still in the future — that's your token (tokens last 1 year, and any of them works, regardless of which client minted it).</li>
-    <li>In Postman, open <strong>Settings → Connected Accounts</strong> (or <a href="${esc(POSTMAN_SETTINGS_URL)}" target="_blank" rel="noopener">open directly ↗</a>).</li>
-    <li>Add a new MCP server. Set <strong>Server URL</strong> = MCP URL above, <strong>Authorization</strong> header = <span class="mono">Bearer &lt;token from tokens.json&gt;</span>.</li>
-    <li>Use the config JSON below, then paste the Prompt instruction into each new chat.</li>
-  </ol>
-  <p class="helptext">MCP config JSON (replace the URL if needed and paste the token from <span class="mono">tokens.json</span>):</p>
-  ${copyEl('{"mcpServers":{"aki-mcp-sv":{"url":"' + url + '","headers":{"Authorization":"Bearer <token from tokens.json>"}}}}')}
-  <p class="helptext" style="margin-top:12px">Prompt instruction — paste into each new chat (Postman has no persistent system prompt):</p>
+  <p class="helptext">Click the JSON to copy, then paste it in Postman Connected Accounts.</p>
+  <p class="lnk"><a href="${esc(POSTMAN_SETTINGS_URL)}" target="_blank" rel="noopener">↗ Open Connected Accounts</a></p>
+  ${copyEl(postmanJson, true, 'postmanJson')}
+  <p class="helptext" style="margin-top:12px">Paste this prompt into each new chat. Postman has no persistent system prompt.</p>
   ${copyEl(POSTMAN_PROMPT)}
   <p class="helptext" style="margin-top:12px">Setup screenshots:</p>
   <figure><img src="/img/aki-mcp-instruct-postman-1.png" alt="Postman MCP setup step 1" loading="lazy" style="max-width:100%;border-radius:6px"></figure>

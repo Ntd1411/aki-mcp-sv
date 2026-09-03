@@ -2,6 +2,18 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning per [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Postman MCP JSON on the panel**: the Postman tab mints or reuses a real `/mcp` access token (same `oauth.js` issuance and `tokens.json` store) and prefills a complete MCP JSON for one-click copy. No hunting `tokens.json`, no "connect another client first", no Generate click.
+
+### Fixed
+- **ChatGPT Developer mode step restored**: 1.12.0 panel/docs dropped a still-required OpenAI step (Settings → Security and login). Custom MCP apps still need it. Registration URL / Advanced OAuth stay omitted (well-known auto-discovery).
+- **ChatGPT icon path is click-to-copy** on the panel, same as other copyable values.
+
+### Changed
+- **Postman tab and README**: copy the filled JSON, paste in Postman. Prompt paste stays as a second copy field. Generate button removed; the token is issued at panel render via `getOrIssueAccessToken()`.
+
 ## [1.12.0] - 2026-08-31
 
 ### Added

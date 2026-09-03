@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, readdir
 import os from 'node:os';
 import path from 'node:path';
 import { renderPanel } from './config-page.js';
+import { getOrIssueAccessToken } from './oauth.js';
 import { loadAllowlist, loadAllowlistDirs, readSettings, DEFAULT_ALLOWLIST } from './allowlist.js';
 import { getRoots, overlaps } from './roots.js';
 import { funnelStatus } from './tailscale.js';
@@ -233,7 +234,7 @@ export function startPanel({ port, token, origin, ingress, client, passphrase, u
         return res.end('wrong token — open the URL that `npm start` printed');
       }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end(renderPanel({ origin, ingress, client, passphrase, token, repoRoot: REPO_ROOT, rulesDir: RULES_DIR, userDir: USER_DIR, updateInfo, hasGit: existsSync(path.join(REPO_ROOT, '.git')), savedIngress: readIngressConfig() }));
+      return res.end(renderPanel({ origin, ingress, client, passphrase, token, accessToken: getOrIssueAccessToken(), repoRoot: REPO_ROOT, rulesDir: RULES_DIR, userDir: USER_DIR, updateInfo, hasGit: existsSync(path.join(REPO_ROOT, '.git')), savedIngress: readIngressConfig() }));
     }
 
     if (req.method === 'GET' && await serveStatic(res, urlPath)) return;

@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node ./scripts/start.js",
     "package": "node ./scripts/build/package.js",
-    "test": "node ./scripts/streamable-bridge.test.js"
+    "test": "node ./scripts/streamable-bridge.test.js && node ./scripts/oauth.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

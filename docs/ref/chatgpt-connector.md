@@ -1,16 +1,17 @@
 # ChatGPT — Add custom connector (real install flow)
 
-The actual flow is simpler than the old panel suggested. No Developer mode toggle, no Advanced OAuth settings, no Registration URL to paste — ChatGPT auto-discovers everything from the server's `/.well-known/openid-configuration` endpoint.
+OpenAI requires **Developer mode** before you can create custom MCP apps ([docs](https://developers.openai.com/api/docs/guides/developer-mode)). Registration URL and Advanced OAuth stay unused: ChatGPT auto-discovers those from `/.well-known/openid-configuration`.
 
 ## Install steps
 
-1. Open [Create a connector ↗](https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins) (ChatGPT → Settings → Connectors → New connector).
-2. **Icon** — optional. Use `<repo>/public/favicon/icon-48.png` or any image.
-3. **Name** — your choice (e.g. `Aki MCP Server`).
-4. **Description** — your choice (e.g. `Local file and shell access via MCP`).
-5. **Connection → Server URL** — paste the **MCP URL** from the panel (e.g. `https://aki-mba16.tailf23d51.ts.net/mcp`).
-6. Tick **I understand and want to continue**, then **Create**.
-7. On connect, the browser opens the auth page — enter the **Passphrase** shown in the panel.
+1. Enable **Developer mode**: ChatGPT → Settings → Security and login ([open ↗](https://chatgpt.com/#settings/Security)).
+2. Open [Create a connector ↗](https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins) (ChatGPT → Settings → Connectors → New connector).
+3. **Icon** (optional). Use `<repo>/public/favicon/icon-48.png` or any image.
+4. **Name**: your choice (e.g. `Aki MCP Server`).
+5. **Description**: your choice (e.g. `Local file and shell access via MCP`).
+6. **Connection → Server URL**: paste the **MCP URL** from the panel (e.g. `https://aki-mba16.tailf23d51.ts.net/mcp`).
+7. Tick **I understand and want to continue**, then **Create**.
+8. On connect, the browser opens the auth page. Enter the **Passphrase** shown in the panel.
 
 That's it. ChatGPT self-registers as an OAuth client via DCR (RFC 7591, PKCE, no secret) using the `registration_endpoint` it reads from `/.well-known/openid-configuration`. No Client ID or Secret to paste.
 

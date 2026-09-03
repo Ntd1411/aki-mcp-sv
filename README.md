@@ -104,13 +104,11 @@ claude.ai connects and calls the in-house `local__*` tool suite: `local__find_pa
 
 Needs ChatGPT Plus/Pro (or Business/Enterprise/Edu) with **Developer mode** for custom connectors.
 
-1. ChatGPT → Settings → Apps & Connectors (or Security) → enable **Developer mode**
+1. ChatGPT → Settings → Security and login → enable **Developer mode**
 2. Create a custom connector / app → paste the same MCP URL (`https://your-machine.your-tailnet.ts.net/mcp`)
-3. Auth: **OAuth** → **Advanced OAuth settings** → set **Registration URL** to `https://your-machine.your-tailnet.ts.net/register` (the panel prints the exact value to copy). This is the step that enables DCR: ChatGPT self-registers its own client from it. Skip it and ChatGPT can't register, so it falls back to a user-defined client — and pasting Claude's Client ID there fails, because that client only allows `claude.ai` redirects.
-4. Leave registration method on **DCR**, token endpoint auth method **none** — do **not** paste Claude's Client ID/Secret here.
-5. Enter the same **passphrase** on the confirmation page
+3. Enter the same **passphrase** on the confirmation page
 
-Same folder allowlist and shell allowlist as Claude. Restart `npm start` after upgrading so gatekeeper advertises `registration_endpoint` and serves `/.well-known/openid-configuration` (ChatGPT reads that to auto-fill the Registration URL).
+ChatGPT self-registers via DCR (RFC 7591, PKCE, no secret) from `/.well-known/openid-configuration`. Do not paste Claude's Client ID or Secret. Same folder allowlist and shell allowlist as Claude.
 
 ## Connecting from Grok and Gemini
 
@@ -122,12 +120,11 @@ Both ride the same MCP URL and passphrase flow — no separate transport or auth
 
 ## Connecting from Postman
 
-Postman's AI Agent (Flows / Connected Accounts) has no OAuth redirect for third-party MCP servers and no persistent system-prompt field, so it connects differently from the clients above:
+Postman's AI Agent (Flows / Connected Accounts) has no OAuth redirect for third-party MCP servers and no persistent system-prompt field.
 
-1. Connect at least one other client first (Claude, ChatGPT, Grok, or Gemini) — completing its OAuth consent mints a real access token.
-2. Open `~/.aki/mcpsv/tokens.json` and copy any hex key under `"access"` whose `expires` is still in the future — that's the Bearer token. It is **not** the passphrase: the passphrase only gates the one-time browser consent page, `/mcp` itself only accepts an already-issued token, and any valid token works regardless of which client minted it.
-3. In Postman, add a new MCP server (Settings → Connected Accounts) with **Server URL** = the MCP URL and **Authorization** header = `Bearer <token from tokens.json>` — or paste the ready-made config JSON from panel section 1's Postman tab.
-4. Paste the panel's prompt instruction block into each new chat, since Postman doesn't persist one across sessions.
+1. In the panel's Postman tab, click the filled JSON to copy. It has the live MCP URL and a real minted access token. It is not the passphrase.
+2. In Postman, add a new MCP server (Settings → Connected Accounts) and paste the JSON.
+3. Paste the panel's prompt into each new chat, since Postman doesn't persist one across sessions.
 
 ## Autonomous Cloud Automation (Grok + Local MCP)
 

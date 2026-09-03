@@ -331,14 +331,27 @@ export async function handleToken(req, res) {
   return json(res, 400, { error: 'unsupported_grant_type' });
 }
 
-function issueTokens(res, clientId, existingRefresh, via) {
+function mintTokens(clientId, existingRefresh, via) {
   const accessToken = randomBytes(32).toString('hex');
   accessTokens.set(accessToken, { expires: Date.now() + ACCESS_TTL_S * 1000 });
   const refreshToken = existingRefresh || randomBytes(32).toString('hex');
   refreshTokens.set(refreshToken, { clientId });
   saveTokens();
   log(`[oauth] tokens ISSUED via ${via} (access + refresh) — client is now authorized`);
+  return { accessToken, refreshToken };
+}
+
+function issueTokens(res, clientId, existingRefresh, via) {
+  const { accessToken, refreshToken } = mintTokens(clientId, existingRefresh, via);
   json(res, 200, { access_token: accessToken, token_type: 'Bearer', expires_in: ACCESS_TTL_S, refresh_token: refreshToken });
+}
+
+export function getOrIssueAccessToken() {
+  const now = Date.now();
+  for (const [token, entry] of accessTokens) {
+    if (entry.expires >= now) return token;
+  }
+  return mintTokens(loadOrCreateClient().clientId, undefined, 'panel').accessToken;
 }
 
 export function verifyBearer(authHeader) {
