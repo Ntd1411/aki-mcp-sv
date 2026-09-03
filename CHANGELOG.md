@@ -14,6 +14,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versio
 ### Changed
 - **Postman tab and README**: copy the filled JSON, paste in Postman. Prompt paste stays as a second copy field. Generate button removed; the token is issued at panel render via `getOrIssueAccessToken()`.
 
+### Removed
+- **Standalone package delivery**: Node-less bootstrap launchers, payload archives, `scripts/build/`, and the tag-triggered asset/smoke-test jobs. Install is `git clone`, `npm install`, `npm start`. GitHub Releases still publish CHANGELOG notes on a bare semver tag, with no binary assets. The panel update row is always Pull & restart (the no-git Download launcher link is gone).
+
 ## [1.12.0] - 2026-08-31
 
 ### Added

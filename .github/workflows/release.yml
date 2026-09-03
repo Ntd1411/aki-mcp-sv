@@ -10,117 +10,35 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.14.0'
-          cache: npm
-
-      - run: npm ci
-
-      - name: Build payload + launchers + SHA256SUMS
-        run: node scripts/build/package.js
-
-      - name: Syntax-check the build scripts themselves
-        run: find scripts -name '*.js' -print0 | xargs -0 -n1 node --check
-
-      - name: Syntax-check the POSIX launchers
-        run: |
-          sh -n dist/*-macos.command
-          sh -n dist/*-linux.run
-
-      - name: Syntax-check the Windows launcher's embedded PowerShell
-        run: |
-          node -e "
-            const fs = require('node:fs');
-            const cmd = fs.readFileSync(process.argv[1], 'utf8');
-            const m = cmd.match(/-EncodedCommand ([A-Za-z0-9+/=]+)/);
-            if (!m) throw new Error('no -EncodedCommand payload found in the .cmd launcher');
-            fs.writeFileSync('/tmp/launcher.ps1', Buffer.from(m[1], 'base64').toString('utf16le'));
-          " dist/*-windows.cmd
-          pwsh -NoProfile -Command '$tokens = $null; $parseErrors = $null; [System.Management.Automation.Language.Parser]::ParseFile("/tmp/launcher.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null; if ($parseErrors.Count -gt 0) { $parseErrors | ForEach-Object { Write-Error $_ }; exit 1 } else { Write-Host "PowerShell syntax OK" }'
-
-      - name: Verify SHA256SUMS covers exactly the 6 required assets, self-consistently
-        run: |
-          cd dist
-          sha256sum -c SHA256SUMS
-          test "$(wc -l < SHA256SUMS)" -eq 5
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-assets
-          path: dist/
-          retention-days: 7
-
-  smoke-test:
-    needs: build
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22.14.0'
-          cache: npm
-
-      - run: npm ci
-
-      - name: Bootstrap smoke test (own scratch payload/launcher, Node stripped from the launcher's PATH)
-        run: node scripts/build/smoke-test.js
-
   release:
-    needs: [build, smoke-test]
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # need full tag history for the PREV_TAG compare-link lookup below
+          fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-assets
-          path: dist/
-
-      - name: Create or update the draft release with all 6 assets
+      - name: Create GitHub Release from CHANGELOG
         run: |
           TAG="${GITHUB_REF_NAME}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --clobber
-          else
-            # release.B4: body must carry the tagged CHANGELOG section, not a bare --generate-notes (near-empty on this repo — commits go straight to trunk, no PR history for it to derive from) plus a compare-link footer.
-            awk -v tag="$TAG" '
-              $0 ~ "^## \\[" tag "\\]" { flag=1; next }
-              flag && /^## \[/ { flag=0 }
-              flag
-            ' CHANGELOG.md > /tmp/changelog-section.md
-            # Bare-semver tags only (release.yml's own trigger pattern) -- legacy v1.x.x tags (CLAUDE.md: "immutable history") sort ahead of them lexically and would pick the wrong "previous" release otherwise.
-            PREV_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -v "^${TAG}$" | head -1)
-            {
-              echo "Pick the file for your OS: \`*-macos.command\`, \`*-windows.cmd\`, or \`*-linux.run\`. Just run it."
-              echo
-              echo "---"
-              echo
-              cat /tmp/changelog-section.md
-              if [ -n "$PREV_TAG" ]; then
-                echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${TAG}"
-              else
-                echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${TAG}"
-              fi
-            } > /tmp/release-notes.md
-            gh release create "$TAG" dist/* --draft --title "$TAG" --notes-file /tmp/release-notes.md
+            exit 0
           fi
-
-      - name: Required-asset gate — verify against the real uploaded release, not the local build
-        run: node scripts/build/release-gate.js "${GITHUB_REF_NAME}"
-
-      - name: Publish (only reached if the gate above passed)
-        run: gh release edit "${GITHUB_REF_NAME}" --draft=false
+          # release.B4: body must carry the tagged CHANGELOG section, not a bare --generate-notes (near-empty on this repo — commits go straight to trunk, no PR history for it to derive from) plus a compare-link footer.
+          awk -v tag="$TAG" '
+            $0 ~ "^## \\[" tag "\\]" { flag=1; next }
+            flag && /^## \[/ { flag=0 }
+            flag
+          ' CHANGELOG.md > /tmp/changelog-section.md
+          # Bare-semver tags only (release.yml's own trigger pattern) -- legacy v1.x.x tags (CLAUDE.md: "immutable history") sort ahead of them lexically and would pick the wrong "previous" release otherwise.
+          PREV_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -v "^${TAG}$" | head -1)
+          {
+            cat /tmp/changelog-section.md
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${TAG}"
+            else
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${TAG}"
+            fi
+          } > /tmp/release-notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file /tmp/release-notes.md

@@ -2,7 +2,7 @@
 
 Give Claude on the **web** (claude.ai), **ChatGPT**, and **Grok** read/edit access to files and a whitelisted shell on your local machine. Operates over HTTPS through a swappable public edge (Tailscale Funnel by default, or your own Cloudflare tunnel / any stable HTTPS edge), gated by OAuth 2.1. *(Experimental support for Gemini — see [Connecting from Grok and Gemini](#connecting-from-grok-and-gemini). Also connectable from Postman's AI Agent — see [Connecting from Postman](#connecting-from-postman).)*
 
-No desktop app. No device lock-in. No install needed if you use the standalone launcher below.
+No desktop app. No device lock-in. Clone, `npm install`, `npm start`.
 
 <img width="1190" height="1062" alt="aki-mcp-sv control panel" src="https://github.com/user-attachments/assets/760a7202-ad61-4f5d-86e3-973e90c74bd3" />
 
@@ -32,30 +32,10 @@ The Claude Desktop app already does local file access, but ties usage to a devic
 ## Install
 
 > [!NOTE]
-> **Is this safe to run?** The standalone launchers extract a private Node runtime and the app payload strictly into your OS's per-user app-data directory (`~/Library/Application Support/aki-mcp-sv` on macOS, `%LOCALAPPDATA%\aki-mcp-sv` on Windows, `${XDG_DATA_HOME:-~/.local/share}/aki-mcp-sv` on Linux); your own settings/tokens live separately at `~/.aki/mcpsv/`. Nothing is installed system-wide, no background service or daemon is created, and no `sudo`/administrator privileges are required. The shell tool is read-only by default (see [Security](#security)). Closing the terminal window stops the server completely.
-
-### Option 1: Standalone package (recommended — no Node.js needed)
-
-Download the launcher for your OS from the [latest release](https://github.com/lacvietanh/aki-mcp-sv/releases/latest) — **not** the green "Code" button's "Download ZIP" above, which is just the source and won't run:
-
-- **macOS**: double-click `aki-mcp-sv-<version>-macos.command` (or run it from Terminal)
-- **Linux**: `chmod +x aki-mcp-sv-<version>-linux.run && ./aki-mcp-sv-<version>-linux.run` (downloaded files aren't executable by default)
-- **Windows**: double-click `aki-mcp-sv-<version>-windows.cmd` — still needs [Git for Windows](https://git-scm.com/download/win) (or WSL) on `PATH`, see [Requirements](#requirements)
-
-**Handling first-run OS security warnings** — expected on an uncode-signed launcher, not a sign anything's wrong:
-- **Browser download warning** (Chrome/Edge/Safari flagging `.command`/`.cmd`/`.run` as an uncommon file type): click "Keep"/"Download anyway".
-- **macOS Gatekeeper** ("cannot be opened because the developer cannot be verified"): right-click the `.command` file → Open once to bypass. If that option is missing (macOS 15+ dropped it), open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** — or run `xattr -d com.apple.quarantine <path-to-file>` in Terminal first, which works on every macOS version.
-- **Windows SmartScreen** ("Windows protected your PC"): click **More info**, then **Run anyway**.
-
-**Operational notes:**
-- **First run** downloads and checksum-verifies the Node runtime + app payload; later runs reuse what's already downloaded, so they start fast with no network access needed.
-- **To start it again later** (after a reboot or closing the terminal): run the exact same launcher file again — it's still in your Downloads folder.
-- **Keep the terminal/console window open** — it's the running server, not just a progress log. Closing it stops everything, including the control panel and any active connection.
-
-### Option 2: Install from source (needs Node.js)
+> **Is this safe to run?** Nothing is installed system-wide, no background service or daemon is created, and no `sudo`/administrator privileges are required. Settings and tokens live at `~/.aki/mcpsv/`. The shell tool is read-only by default (see [Security](#security)). Closing the terminal window stops the server.
 
 ```bash
-git clone <repo-url> aki-mcp-sv
+git clone https://github.com/lacvietanh/aki-mcp-sv.git
 cd aki-mcp-sv
 npm install
 ```
@@ -63,10 +43,6 @@ npm install
 Then see [Run](#run) below.
 
 ## Run
-
-**Standalone package:** the launcher already started the server for you — no command to type. Everything below (what gets printed, what the control panel shows, the default folder access) still applies to you, so skim it before jumping to [Connecting from Claude web](#connecting-from-claude-web).
-
-**Git-clone path:**
 
 ```bash
 cp .env.example .env   # optional: only if you need PUBLIC_ORIGIN or another non-default var
@@ -136,7 +112,7 @@ Grok's scheduled prompts turn your machine into a headless "personal remote AI n
 
 ## Requirements
 
-- Node.js, on Windows, Linux, or macOS. Don't have it? Skip straight to [the standalone package](#install) below, no install needed — bootstrap launchers ship for Windows, Linux, and macOS.
+- Node.js 22, on Windows, Linux, or macOS.
 - **Windows only:** [Git for Windows](https://git-scm.com/download/win) (or WSL) on `PATH` — the shell/search tools shell out to Unix binaries (`ls cat pwd grep head tail wc file stat tree ps df du whoami uname`), and akidevrule's `install.sh` needs `bash`; Git for Windows' `usr/bin` ships the coreutils/findutils/grep/diffutils this needs. Same category of prerequisite as Tailscale below, not a code dependency.
 - Tailscale (one-time setup):
   1. [Install Tailscale](https://tailscale.com/download) and sign in (on macOS, the app or `brew install tailscale` both work as long as `tailscale` is on PATH)
@@ -203,8 +179,7 @@ aki-mcp-sv/
 │   ├── panel.js                  # loopback-only control panel (:9998), token-gated
 │   ├── config-page.js            # renders the panel page
 │   ├── html.js                   # HTML escaper (esc) — shared by oauth confirm page and panel
-│   ├── userdata.js               # user data location (~/.aki/mcpsv) — single source of truth
-│   └── build/                    # standalone release builder: payload/launchers/checksums, smoke-test, release-gate
+│   └── userdata.js               # user data location (~/.aki/mcpsv) — single source of truth
 └── public/                       # panel CSS/JS, favicon + images, served publicly by gatekeeper
 ```
 
@@ -224,11 +199,6 @@ A clone stays exactly as checked out: editing folders/allowlist from the panel n
 ## Configuration
 
 Copy `.env.example` to `.env` and uncomment what you need — `start.js` loads it automatically on boot (falls back silently to defaults when `.env` is absent, so the default Tailscale flow is unaffected). Supported vars: `PUBLIC_ORIGIN`, `GATEKEEPER_PORT`, `PANEL_PORT`, `MCP_HUB_PORT`, `MCP_DATA_DIR`, `MCP_REQUEST_TIMEOUT_MS`. For a one-off alternate profile, pass `node --env-file=.env.user ./scripts/start.js` instead.
-
-**Standalone package:** `.env.example` isn't part of the downloaded payload, so create `.env` by hand instead, in the same per-version app directory the launcher runs from (not the folder you downloaded the launcher into):
-- macOS: `~/Library/Application Support/aki-mcp-sv/app/<version>/.env`
-- Linux: `${XDG_DATA_HOME:-~/.local/share}/aki-mcp-sv/app/<version>/.env`
-- Windows: `%LOCALAPPDATA%\aki-mcp-sv\app\<version>\.env`
 
 ## Exposing to the internet
 

@@ -152,7 +152,7 @@ async function installRules() {
 // Pull this repo, but only when the tree is clean — an unattended pull over local edits can conflict or lose work (agent.B3). Checked at click-time, not page-load, since the tree can change in between.
 async function pullUpdate() {
   if (!existsSync(path.join(REPO_ROOT, '.git'))) {
-    throw new Error('this is not a git checkout — download the latest zip from the repo instead');
+    throw new Error('this is not a git checkout: clone the repo and run from there');
   }
   const dirty = (await run('git', ['-C', REPO_ROOT, 'status', '--porcelain'])).trim();
   if (dirty && dirty !== '(no output)') {
@@ -234,7 +234,7 @@ export function startPanel({ port, token, origin, ingress, client, passphrase, u
         return res.end('wrong token — open the URL that `npm start` printed');
       }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end(renderPanel({ origin, ingress, client, passphrase, token, accessToken: getOrIssueAccessToken(), repoRoot: REPO_ROOT, rulesDir: RULES_DIR, userDir: USER_DIR, updateInfo, hasGit: existsSync(path.join(REPO_ROOT, '.git')), savedIngress: readIngressConfig() }));
+      return res.end(renderPanel({ origin, ingress, client, passphrase, token, accessToken: getOrIssueAccessToken(), repoRoot: REPO_ROOT, rulesDir: RULES_DIR, userDir: USER_DIR, updateInfo, savedIngress: readIngressConfig() }));
     }
 
     if (req.method === 'GET' && await serveStatic(res, urlPath)) return;

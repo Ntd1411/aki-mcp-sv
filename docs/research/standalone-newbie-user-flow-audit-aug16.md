@@ -1,5 +1,7 @@
 # Standalone newbie user-flow audit
 
+Status: superseded by `docs/plan/done/remove-package-to-simple-repo.md` (launcher UX is no longer a product surface)
+
 **Start time:** 2026-08-16
 
 **Initial purpose:** After shipping 1.9.2 (renamed `-payload.*` assets, short OS-picker release note), owner asked for a full newbie walkthrough — zero prior knowledge of MCP/OAuth/Tailscale/Node — from landing on the GitHub repo through a working Claude web connection, to catch remaining drift/UX-crisis points the prior README pass (1.9.1 → 1.9.2, commit `792ea40`) might have missed. Audited against repo state at commit `944b90b` (README/CHANGELOG only, before this doc's own fixes below).
