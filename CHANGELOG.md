@@ -2,7 +2,7 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning per [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.13.0] - 2026-09-03
 
 ### Added
 - **Postman MCP JSON on the panel**: the Postman tab mints or reuses a real `/mcp` access token (same `oauth.js` issuance and `tokens.json` store) and prefills a complete MCP JSON for one-click copy. No hunting `tokens.json`, no "connect another client first", no Generate click.
