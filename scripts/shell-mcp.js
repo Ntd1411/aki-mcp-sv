@@ -1,4 +1,4 @@
-// Allowlist-gated shell MCP tool, in-house (npm `shell-mcp` has no real whitelist) — rationale: docs/plan/init.md
+// Allowlist-gated shell MCP tool, in-house (npm `shell-mcp` has no real whitelist) — rationale: docs/plan/done/init.md
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

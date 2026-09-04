@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Streamable HTTP shim: bridges POST /mcp directly to the in-process tools McpServer over the SDK's
-// InMemoryTransport — no more separate mcp-hub process or SSE handshake (docs/plan/2.0.0-improve.md
+// InMemoryTransport — no more separate mcp-hub process or SSE handshake (docs/plan/done/2.0.0-improve.md
 // #7, Stage 2 phase 2). One shared internal session for the whole process, same as before the
 // collapse: rationale in docs/plan/done/bridge-session-churn.md (Option B) and CLAUDE.md § Session
 // lifecycle — claude.ai re-sends `initialize` with no session id roughly every ~10s per conversation,

@@ -2,7 +2,7 @@
 // child. Security logic (symlink-safe path validation, atomic write) ported from that package's
 // lib.js/path-validation.js, layered on roots.js:resolveRealUnderRoot() instead of a spawn-time-frozen
 // allowedDirectories array, so a folder edit in the panel takes effect on the next call like every
-// other tool (docs/plan/2.0.0-improve.md #7).
+// other tool (docs/plan/done/2.0.0-improve.md #7).
 //
 // Tool surface is trimmed from the original 14 to 7: list_directory/list_directory_with_sizes/
 // directory_tree/search_files are dropped — README/the AI instruction prompt already forbid them in
