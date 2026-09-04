@@ -298,8 +298,36 @@ async function loadTailscale() {
   return 'ready: ' + (s.host || 'domain not available yet');
 }
 
+// Buttons are truth of daemon status, same signal as the dot: not running shows only Launch, running hides Launch and shows Quit + New window. One state, three elements driven from it.
+function renderPostmanState(running) {
+  const dot = document.getElementById('pmDaemonDot');
+  dot.textContent = running ? '✓' : '✕';
+  dot.className = 'dot ' + (running ? 'ok' : 'err');
+  document.getElementById('pmBtnLaunch').hidden = running;
+  document.getElementById('pmBtnQuit').hidden = !running;
+  document.getElementById('pmBtnNewWindow').hidden = !running;
+}
+
+async function loadPostmanDaemon() {
+  const s = await api('GET', '/api/postman-status');
+  renderPostmanState(s.running);
+  say('msgPmDaemon', s.running ? 'running (pid ' + s.pid + ')' : 'not running — click Launch above', s.running);
+}
+
 const ACTIONS = {
   tailscale: (btn) => act(btn, 'msgTs', loadTailscale),
+  // Buttons flip only from the handler's real running/pid — never before spawn/kill returns.
+  launchPostman: (btn) => act(btn, 'msgPmDaemon', async () => {
+    const s = await api('POST', '/api/postman-launch');
+    renderPostmanState(s.running);
+    return s.message;
+  }),
+  quitPostman: (btn) => act(btn, 'msgPmDaemon', async () => {
+    const s = await api('POST', '/api/postman-quit');
+    renderPostmanState(s.running);
+    return s.message;
+  }),
+  newWindowPostman: (btn) => act(btn, 'msgPmDaemon', async () => (await api('POST', '/api/postman-new-window')).message),
   addFolder: (btn) => { addPath('', true); document.querySelector('#paths input:last-of-type')?.focus(); },
   savePaths: (btn) => act(btn, 'msgPaths', async () => {
     const paths = [...document.querySelectorAll('#paths input')].map((i) => i.value.trim()).filter(Boolean);
@@ -412,3 +440,4 @@ renderSavedIngress(SAVED_INGRESS);
 // One failed /api/state leaves three sections blank, so the failure is reported next to each of them.
 loadState().catch((e) => ['msgPaths', 'msgAllow', 'msgTrusted', 'msgRules'].forEach((id) => say(id, e.message, false)));
 loadTailscale().then((m) => say('msgTs', m, m.startsWith('ready'))).catch((e) => say('msgTs', e.message, false));
+loadPostmanDaemon().catch((e) => { document.getElementById('msgPmDaemon').textContent = e.message; });

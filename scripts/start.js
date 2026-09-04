@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Orchestrates gatekeeper + panel + the in-process tools server behind 1 `npm start`; foreground by
-// design, manual stop/start only. Single Node process (docs/plan/2.0.0-improve.md #7, Stage 2) — no
+// design, manual stop/start only. Single Node process (docs/plan/done/2.0.0-improve.md #7, Stage 2) — no
 // more mcp-hub child, since streamable-bridge.js now talks to the tools McpServer directly.
 // process.loadEnvFile throws ENOENT when the file is missing — swallow it so a .env is optional.
 try { process.loadEnvFile?.(); } catch {}
@@ -17,6 +17,7 @@ import { startPanel } from './panel.js';
 import { warmToolsServer } from './streamable-bridge.js';
 import { checkForUpdate, writeStatusFile } from './update-check.js';
 import { USER_DIR, readIngressConfig } from './userdata.js';
+import { killPostmanDaemon } from './postman-mcp.js';
 
 const gatePort = process.env.GATEKEEPER_PORT || '9999';
 const panelPort = process.env.PANEL_PORT || '9998';
@@ -122,7 +123,7 @@ function spawnCloudflared(credPath) {
 // replaces the old spawnHub()'s "fail loud at boot" role now that it's in-process.
 warmToolsServer();
 if (ingressMode === 'cloudflared') cloudflared = spawnCloudflared(cloudflaredCredPath);
-// Gatekeeper runs in-process (docs/plan/consolidate-mcp-tool-processes.md, Part B); a fatal listen error tears the whole stack down via shutdown, so no child is ever left orphaned.
+// Gatekeeper runs in-process (docs/plan/done/consolidate-mcp-tool-processes.md, Part B); a fatal listen error tears the whole stack down via shutdown, so no child is ever left orphaned.
 let gateServer;
 try {
   gateServer = startGatekeeper(origin, shutdown);
@@ -148,9 +149,10 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   cloudflared?.kill();
+  killPostmanDaemon();
   gateServer?.close();
   panel?.close();
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-process.on('exit', () => cloudflared?.kill()); // safety net: never leave cloudflared orphaned if this process exits abruptly
+process.on('exit', () => { cloudflared?.kill(); killPostmanDaemon(); }); // safety net: never leave a child orphaned if this process exits abruptly

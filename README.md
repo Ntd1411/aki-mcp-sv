@@ -6,7 +6,7 @@ No desktop app. No device lock-in. Clone, `npm install`, `npm start`.
 
 <img width="1190" height="1062" alt="aki-mcp-sv control panel" src="https://github.com/user-attachments/assets/760a7202-ad61-4f5d-86e3-973e90c74bd3" />
 
-[![Version](https://img.shields.io/badge/version-1.12.0-blue.svg)](CHANGELOG.md) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#install)
+[![Version](https://img.shields.io/badge/version-1.13.0-blue.svg)](CHANGELOG.md) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#install)
 
 **Contents:** [Why this exists](#why-this-exists) · [When to use & Core Use-Cases](#when-to-use--core-use-cases) · [Install](#install) · [Run](#run) · [Connecting from Claude web](#connecting-from-claude-web) · [Connecting from ChatGPT](#connecting-from-chatgpt) · [Connecting from Grok and Gemini](#connecting-from-grok-and-gemini) · [Connecting from Postman](#connecting-from-postman) · [Autonomous Cloud Automation](#autonomous-cloud-automation-grok--local-mcp) · [Requirements](#requirements) · [Architecture](#architecture) · [Directory layout](#directory-layout) · [Configuration](#configuration) · [Exposing to the internet](#exposing-to-the-internet) · [Finding files](#finding-files) · [Security](#security)
 
@@ -102,6 +102,8 @@ Postman's AI Agent (Flows / Connected Accounts) has no OAuth redirect for third-
 2. In Postman, add a new MCP server (Settings → Connected Accounts) and paste the JSON.
 3. Paste the panel's prompt into each new chat, since Postman doesn't persist one across sessions.
 
+The Postman tab also has a **Launch** button that attaches control to the Postman desktop app itself — auto-clicking Approve/Continue/Run/Try again and toggling Thinking/Auto-run inside the Postman window, on top of opening it if it isn't already running. **Quit** stops that control daemon; **New window** asks it to open another Postman window. None of this runs at `npm start` boot — it starts only when Launch is clicked.
+
 ## Autonomous Cloud Automation (Grok + Local MCP)
 
 Grok's scheduled prompts turn your machine into a headless "personal remote AI node": no browser tab, no desktop app, just `npm start` running in the background.
@@ -142,6 +144,7 @@ tools-server.js — one shared McpServer, in-process (InMemoryTransport, no chil
                                   agy-mcp.js          (Antigravity CLI, read-only plan mode)
                                   kiro-mcp.js         (kiro_read, read-only, needs kiro-cli on PATH)
                                   filesystem-mcp.js   (native read/write/edit inside the allowed folders)
+                                  postman-mcp.js      (postman_status, read-only daemon status check)
 
 panel.js       — 127.0.0.1:9998, never exposed via Funnel
                  control UI: allowed folders, shell allowlist,
@@ -169,6 +172,8 @@ aki-mcp-sv/
 │   ├── agy-mcp.js                # register() module for the agy CLI (mounted by tools-server.js)
 │   ├── kiro-mcp.js               # Kiro arm: kiro_read (read-only) tool, sonnet-4.5 locked, needs kiro-cli on PATH
 │   ├── filesystem-mcp.js         # native read/write/edit tools, symlink-safe path containment
+│   ├── postman-mcp.js            # postman_status tool + the Postman control daemon's one launch/kill path
+│   ├── aki-pmcontrol/            # finished copy of the private aiobox lab: CDP-driven Postman desktop control
 │   ├── mcp-tool.js               # shared MCP tool-result envelope: ok / err / fail
 │   ├── allowlist.js              # default command set + settings reader — shared by server and panel
 │   ├── search-mcp.js             # find_path / search_content — whole tree in one call
@@ -180,6 +185,7 @@ aki-mcp-sv/
 │   ├── config-page.js            # renders the panel page
 │   ├── html.js                   # HTML escaper (esc) — shared by oauth confirm page and panel
 │   └── userdata.js               # user data location (~/.aki/mcpsv) — single source of truth
+├── test/                         # test suite (run via `npm test`)
 └── public/                       # panel CSS/JS, favicon + images, served publicly by gatekeeper
 ```
 
@@ -198,7 +204,7 @@ A clone stays exactly as checked out: editing folders/allowlist from the panel n
 
 ## Configuration
 
-Copy `.env.example` to `.env` and uncomment what you need — `start.js` loads it automatically on boot (falls back silently to defaults when `.env` is absent, so the default Tailscale flow is unaffected). Supported vars: `PUBLIC_ORIGIN`, `GATEKEEPER_PORT`, `PANEL_PORT`, `MCP_HUB_PORT`, `MCP_DATA_DIR`, `MCP_REQUEST_TIMEOUT_MS`. For a one-off alternate profile, pass `node --env-file=.env.user ./scripts/start.js` instead.
+Copy `.env.example` to `.env` and uncomment what you need — `start.js` loads it automatically on boot (falls back silently to defaults when `.env` is absent, so the default Tailscale flow is unaffected). Supported vars: `PUBLIC_ORIGIN`, `GATEKEEPER_PORT`, `PANEL_PORT`, `MCP_DATA_DIR`, `MCP_REQUEST_TIMEOUT_MS`. For a one-off alternate profile, pass `node --env-file=.env.user ./scripts/start.js` instead.
 
 ## Exposing to the internet
 

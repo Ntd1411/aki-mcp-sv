@@ -1,6 +1,6 @@
 # Tools — the local capability suite (anchored)
 
-> updated 2026-08-31 · v1.12.0
+> updated 2026-09-05 · v1.14.0
 
 The product's single purpose: give a remote web AI (claude.ai / ChatGPT / Grok / Gemini / Postman) a set of **local capabilities** on the owner's machine — a pair of hands reaching from the browser into the local filesystem, shell, and local agents. Every tool below exists to serve that anchor. This doc records **why each one is here** so a later subtraction audit does not mistake an anchored capability for redundant code and propose removing it.
 
@@ -10,10 +10,11 @@ The product's single purpose: give a remote web AI (claude.ai / ChatGPT / Grok /
 |---|---|---|---|
 | `filesystem` (native, `scripts/filesystem-mcp.js`) | `read_text_file`, `write_file`, `edit_file`, `create_directory`, `move_file`, `get_file_info`, `list_allowed_directories` | Read/write/edit files under the allowed roots, symlink-safe | The remote model, directly |
 | `search` | `find_path`, `search_content` | Fast index-backed path + content lookup (no per-call `find`/`grep` spawn) | The remote model, directly |
-> The third-party `@modelcontextprotocol/server-filesystem` package this replaced also exposed `list_directory`/`directory_tree`/`search_files`/`read_multiple_files`/`read_media_file` — dropped outright rather than prompt-banned, since `find_path`/`search_content` already supersede the listing/search family in practice and the rest had no evidence of real use (`docs/plan/2.0.0-improve.md` §7). Cheap to re-add if a real need shows up.
+> The third-party `@modelcontextprotocol/server-filesystem` package this replaced also exposed `list_directory`/`directory_tree`/`search_files`/`read_multiple_files`/`read_media_file` — dropped outright rather than prompt-banned, since `find_path`/`search_content` already supersede the listing/search family in practice and the rest had no evidence of real use (`docs/plan/done/2.0.0-improve.md` §7). Cheap to re-add if a real need shows up.
 | `shell` | `run_cmd` | Run an allowlisted command as the user; read-only by default, write commands opt-in (`docs/plan/done/shell-allowlist.md`) | The remote model, directly |
 | `agy_run` | `agy_run` | Delegate a whole task to a **local Antigravity CLI agent** — default mode `plan` (read-only by mechanism), default model `gemini-3.7-flash-medium` (fast, wide-context discovery tier) | The remote model delegates; a local agent reasons |
 | `kiro` | `kiro_read` | Delegate a whole read-only task to a **local Kiro CLI agent**, hard-locked to `claude-sonnet-4.5`, `--trust-tools=fs_read` | The remote model delegates; a local agent reasons |
+| `postman` (`scripts/postman-mcp.js`) | `postman_status` | Reports whether the `scripts/aki-pmcontrol/` daemon is running (own child or lab-started pid at `~/.aki/cdp-postman/daemon.pid`) and its `data.json`. Origin is the private lab `aiobox/labs/aki-pmcontrol`; this tree holds the finished copy (except `package.json`, a `{"type":"commonjs"}` shim). Launch is a panel action (`POST /api/postman-launch`), not this tool and not boot. | The remote model, directly — read-only, no CDP in the tool |
 
 ## Two classes — and why the second is not redundant
 

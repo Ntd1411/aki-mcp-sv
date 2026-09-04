@@ -2,6 +2,15 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning per [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Postman app control from the panel**: a new Postman-tab **Launch** button starts (or attaches to) a control daemon (`scripts/aki-pmcontrol/`, a finished copy of the private `aiobox/labs/aki-pmcontrol` lab, driven over the Chrome DevTools Protocol) that auto-clicks Approve/Continue/Run/Try again and toggles Thinking/Auto-run inside the Postman desktop app. **Quit** stops the daemon; **New window** asks it to open another Postman window. Neither the daemon nor the panel's launch path runs at `npm start` boot. A new read-only `postman_status` MCP tool reports whether it is attached. `SIGINT`/`SIGTERM` plus `~/.aki/cdp-postman/daemon.pid` let panel Quit and `npm start` Ctrl+C stop the daemon even if it was started from the standalone lab checkout.
+
+### Changed
+- Tests live in `test/`, not mixed into `scripts/`. The lab-copy gate is `test/aki-pmcontrol-copy.test.js` (skips the sibling-lab byte check when that checkout is absent, so public CI still runs).
+- New dependency: `chrome-remote-interface`, used by the Postman control daemon's CDP driver.
+
 ## [1.13.0] - 2026-09-03
 
 ### Added

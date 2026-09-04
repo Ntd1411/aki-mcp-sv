@@ -13,6 +13,7 @@ import { funnelStatus } from './tailscale.js';
 import { SETTINGS_PATH, USER_DIR, INGRESS_CONFIG_PATH, CLOUDFLARED_CRED_PATH, readIngressConfig } from './userdata.js';
 import { readBody, json, serveStatic } from './http.js';
 import { getLocalVersions, cmpSemver, writeStatusFile } from './update-check.js';
+import { getDaemonStatus, launchPostmanDaemon, killPostmanDaemon, requestNewWindow } from './postman-mcp.js';
 
 const IS_WIN = process.platform === 'win32';
 const REPO_ROOT = process.cwd();
@@ -181,7 +182,7 @@ function refreshLocalVersions(updateInfo) {
   writeStatusFile(updateInfo);
 }
 
-const ROUTES = {
+export const ROUTES = {
   'GET /api/state': async (body, ctx) => ({
     // Same call shell/find_path/search_content enforce with (roots.js:getRoots()), so the list can never show a set that isn't the live one.
     paths: getRoots(),
@@ -191,6 +192,14 @@ const ROUTES = {
     ingressConfig: readIngressConfig(),
   }),
   'GET /api/tailscale': async () => funnelStatus(process.env.GATEKEEPER_PORT || '9999'),
+  // Same function local__postman_status calls (scripts/postman-mcp.js) — one status shape, two readers.
+  'GET /api/postman-status': async () => getDaemonStatus(),
+  // The one launch action (panel Postman tab button) — spawn-or-recognize lives in launchPostmanDaemon itself (scripts/postman-mcp.js), so N clicks here behave like one, same as every other panel action.
+  'POST /api/postman-launch': async () => launchPostmanDaemon(),
+  // Quit returns the real post-kill status (running/pid), never a placeholder "stopping…".
+  'POST /api/postman-quit': async () => killPostmanDaemon(),
+  // New window shown only while running — asks the already-running daemon to fire the same mediator trigger its own injected panel button uses (requestNewWindow, scripts/postman-mcp.js).
+  'POST /api/postman-new-window': async () => requestNewWindow(),
   // No hub restart: setFolders writes setting.json, and roots.js reads it fresh per call — a save takes effect on the next shell/find_path/search_content call, same as the allowlist.
   'POST /api/paths': async (body) => {
     setFolders(validatePaths(body.paths));

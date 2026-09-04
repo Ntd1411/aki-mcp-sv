@@ -235,6 +235,16 @@ ${field('Passphrase', passphrase)}
 </div>
 
 <div class="tabpane" id="tab-postman">
+  <h3 class="subh">Control the Postman app</h3>
+  <p class="helptext">This launch attaches control that opening Postman from the Dock/Spotlight does not: it auto-clicks Approve / Continue / Run / Try again and toggles Thinking / Auto-run inside the Postman window. If Postman is already open, this attaches to it — it does not open a second instance.</p>
+  <div class="acts">
+    <button class="primary" data-act="launchPostman" id="pmBtnLaunch">Launch</button>
+    <button data-act="quitPostman" id="pmBtnQuit" hidden>Quit</button>
+    <button data-act="newWindowPostman" id="pmBtnNewWindow" hidden>New window</button>
+    <span class="dot" id="pmDaemonDot">…</span><span class="msg" id="msgPmDaemon"></span>
+  </div>
+
+  <h3 class="subh" style="margin-top:16px">Connect Postman to this MCP</h3>
   <p class="helptext">Click the JSON to copy, then paste it in Postman Connected Accounts.</p>
   <p class="lnk"><a href="${esc(POSTMAN_SETTINGS_URL)}" target="_blank" rel="noopener">↗ Open Connected Accounts</a></p>
   ${copyEl(postmanJson, true, 'postmanJson')}
