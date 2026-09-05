@@ -9,7 +9,8 @@ if (existsSync('.env')) console.log('[start] loaded environment from .env');
 import { spawn } from 'node:child_process';
 import { funnelStatus, enableFunnel, bringUp } from './tailscale.js';
 import { randomBytes } from 'node:crypto';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import path from 'node:path';
 import { openBrowser } from './open-browser.js';
 import { loadOrCreateClient, loadOrCreatePassphrase } from './oauth.js';
 import { startGatekeeper } from './gatekeeper.js';
@@ -22,6 +23,9 @@ import { killPostmanDaemon } from './postman-mcp.js';
 const gatePort = process.env.GATEKEEPER_PORT || '9999';
 const panelPort = process.env.PANEL_PORT || '9998';
 const panelToken = randomBytes(16).toString('hex');
+// The panel token is regenerated on every boot, so a tray or launcher cannot hardcode the panel URL.
+// Publishing it in USER_DIR is what lets an external process open the panel without scraping stdout.
+const PANEL_URL_PATH = path.join(USER_DIR, 'panel-url.txt');
 
 console.log(`[start] config & keys: ${USER_DIR}`);
 
@@ -31,8 +35,10 @@ const passphrase = loadOrCreatePassphrase();
 // Ingress precedence: --tunnel (spawn cloudflared) > PUBLIC_ORIGIN (bring your own edge) > saved panel ingress config (picked in section 0) > Tailscale Funnel (default).
 // Everything downstream keys off the single `origin`, so each mode only has to resolve that value.
 const argOf = (flag) => { const i = process.argv.indexOf(flag); return i !== -1 ? process.argv[i + 1] : null; };
-const tunnelCred = argOf('--tunnel');
-const tunnelOrigin = argOf('--origin')?.replace(/\/+$/, '') || null;
+// CLOUDFLARED_CRED promotes the --tunnel flag to a .env setting, so systemd and the tray can stay
+// argument-free: PUBLIC_ORIGIN then doubles as the --origin value the credentials file cannot carry.
+const tunnelCred = argOf('--tunnel') || process.env.CLOUDFLARED_CRED || null;
+const tunnelOrigin = (argOf('--origin') || process.env.PUBLIC_ORIGIN)?.replace(/\/+$/, '') || null;
 const publicOrigin = process.env.PUBLIC_ORIGIN?.replace(/\/+$/, '') || null;
 const savedIngress = !tunnelCred && !publicOrigin ? readIngressConfig() : null;
 const cloudflaredCredPath = tunnelCred || savedIngress?.credPath;
@@ -134,6 +140,12 @@ try {
 
 panel = startPanel({ port: Number(panelPort), token: panelToken, origin, ingress: ingressMode, client, passphrase, updateInfo });
 const panelUrl = `http://127.0.0.1:${panelPort}/?t=${panelToken}`;
+// 0600: the token in this URL is a bearer credential for the whole panel API.
+try {
+  writeFileSync(PANEL_URL_PATH, `${panelUrl}\n`, { mode: 0o600 });
+} catch (e) {
+  console.error(`[start] could not publish the panel URL to ${PANEL_URL_PATH}: ${e.message}`);
+}
 // Escape hatch for automated runs (bootstrap smoke tests) that must not pop a browser window — off by default, normal `npm start` is unaffected.
 if (process.env.MCP_SKIP_BROWSER_OPEN) {
   console.log(`[start] MCP_SKIP_BROWSER_OPEN set — not opening a browser (panel: ${panelUrl})`);
@@ -152,6 +164,8 @@ function shutdown() {
   killPostmanDaemon();
   gateServer?.close();
   panel?.close();
+  // A stale file would hand the tray a URL whose token is already dead, which just 403s.
+  try { unlinkSync(PANEL_URL_PATH); } catch {}
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
