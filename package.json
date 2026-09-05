@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "node ./scripts/start.js",
+    "lint": "bash ./aki.sh lint",
     "test": "node ./test/streamable-bridge.test.js && node ./test/oauth.test.js && node ./test/postman-mcp.test.js && node ./test/aki-pmcontrol-copy.test.js"
   },
   "dependencies": {

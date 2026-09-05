@@ -13,6 +13,13 @@ const INTERPRETERS = new Set(['node', 'python', 'python3', 'bun', 'deno', 'tsx',
 // ls-remote requires zero extra args — a repository/URL argument lets git's own ext:: transport helper spawn an arbitrary process before anything "read-only" happens; bare invocation only queries the configured remote.
 const GIT_NO_ARGS_SUBCOMMANDS = new Set(['ls-remote']);
 
+// A real lint or test run on a real project overruns 10s (an eslint config with projectService
+// type-checks the whole project first), and the SIGTERM is invisible: the killed process never
+// gets to print, so the caller sees a bare "Command failed" and misreads it as a config error.
+// Env-configurable, old values as defaults.
+const TIMEOUT_MS = Number(process.env.MCP_SHELL_TIMEOUT_MS) || 10_000;
+const MAX_BUFFER = Number(process.env.MCP_SHELL_MAX_BUFFER) || 1024 * 1024;
+
 const warnedDirs = new Set();
 // A trusted dir inside a writable filesystem root would let write_file + run_cmd become arbitrary code execution with no allowlist review in between. Drop it, fail-safe, and say why once.
 function activeTrustedDirs() {
@@ -99,6 +106,22 @@ class Shell {
     return { bin, args };
   }
 
+  // The allowlist gates the binary; nothing gated its arguments, so `cat` alone authorized
+  // `cat ~/.ssh/id_rsa` even though that path is outside every configured root — cwd was the
+  // only thing ever checked. Only path-shaped args are inspected: absolute ones directly,
+  // relative ones resolved against the (already validated) cwd. That keeps `git log origin/main`
+  // working while `cat ../../../etc/passwd` stops.
+  checkArgPaths(args, cwd) {
+    for (const arg of args) {
+      if (arg.startsWith('-')) continue;
+      if (!path.isAbsolute(arg) && !arg.includes('/') && !arg.includes('\\')) continue;
+      const abs = path.isAbsolute(arg) ? path.resolve(arg) : path.resolve(cwd, arg);
+      if (!getRoots().some((root) => containedIn(abs, root))) {
+        throw new Error(`argument path is outside the allowed roots: ${arg}`);
+      }
+    }
+  }
+
   checkPermission(bin, args) {
     const allowlist = loadAllowlist();
     if (bin in allowlist) {
@@ -116,9 +139,12 @@ class Shell {
 
   run(bin, args, cwd) {
     return new Promise((resolve) => {
-      execFile(bin, args, { cwd, timeout: 10_000, maxBuffer: 1024 * 1024, windowsHide: true }, (error, stdout, stderr) => {
+      execFile(bin, args, { cwd, timeout: TIMEOUT_MS, maxBuffer: MAX_BUFFER, windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
-          resolve(err(stderr || error.message));
+          // Linters and test runners report their findings on stdout and exit non-zero.
+          // Dropping stdout here turned "12 lint errors" into "Command failed" with no detail.
+          const note = error.killed || error.signal ? `timed out after ${TIMEOUT_MS}ms — raise MCP_SHELL_TIMEOUT_MS\n` : '';
+          resolve(err(`${note}${[stderr, stdout].filter(Boolean).join('\n') || error.message}`));
         } else {
           resolve(ok(stdout || '(no output)'));
         }
@@ -132,6 +158,7 @@ class Shell {
       ({ bin, args } = this.parse(command));
       this.checkPermission(bin, args);
       dir = resolveUnderRoot(cwd);
+      this.checkArgPaths(args, dir);
     } catch (e) {
       return fail(e);
     }

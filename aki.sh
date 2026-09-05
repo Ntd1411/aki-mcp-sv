@@ -7,6 +7,7 @@
 #   ./aki.sh tray [--autostart]   # show the tray icon (needs PyQt6)
 #   ./aki.sh install [--no-tray]  # install or refresh the systemd unit, then start the tray
 #   ./aki.sh up                   # install if needed, start the stack, show the tray
+#   ./aki.sh lint                 # syntax-check every script in the repo
 #
 # All configuration lives in .env, which start.js loads by itself. This script only reads the
 # ports back out of it for status reporting, so there is exactly one place to edit.
@@ -180,6 +181,24 @@ bring_up() {
   echo "PanelUrl:  $(panel_url)"
 }
 
+# Syntax-only lint: the repo has no linter dependency, and a parse error in a script that
+# only runs at boot (or in the tray) is exactly the failure that stays hidden until it hurts.
+# Exposed as `npm run lint` too, which is the form an agent can reach through the allowlist.
+lint_all() {
+  local rc=0 f
+  for f in "$REPO_ROOT"/scripts/*.js "$REPO_ROOT"/test/*.js; do
+    node --check "$f" || rc=1
+  done
+  for f in "$REPO_ROOT/aki.sh" "$REPO_ROOT/scripts/install.sh"; do
+    bash -n "$f" || rc=1
+  done
+  # ast.parse rather than py_compile: no __pycache__ left behind in a clean tree.
+  python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$REPO_ROOT/scripts/tray.py" || rc=1
+  # tray.ps1 needs PowerShell's own parser; skipped on Linux by design.
+  if [[ $rc -eq 0 ]]; then echo "lint OK"; fi
+  return $rc
+}
+
 case "${1:-toggle}" in
   start)   start_stack ;;
   stop)    stop_stack ;;
@@ -187,6 +206,7 @@ case "${1:-toggle}" in
   tray)    shift; launch_tray "$@" ;;
   install) shift; run_install "$@" ;;
   up)      shift; bring_up "$@" ;;
+  lint)    lint_all ;;
   restart)
     stop_stack
     # Cloudflare's edge needs a moment to drop the old connector; restarting too fast serves 502s.
@@ -197,7 +217,7 @@ case "${1:-toggle}" in
     if is_running; then stop_stack; else start_stack; fi
     ;;
   *)
-    echo "Usage: $0 {up|start|stop|restart|status|toggle|tray|install}" >&2
+    echo "Usage: $0 {up|start|stop|restart|status|toggle|tray|install|lint}" >&2
     exit 1
     ;;
 esac
