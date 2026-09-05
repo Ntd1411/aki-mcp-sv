@@ -5,8 +5,8 @@ Every action delegates to systemd (preferred) or aki.sh, so the tray never becom
 a second implementation of start/stop.
 
 Usage:
-    ./AKI-Tray.sh                 normal launch
-    ./AKI-Tray.sh --autostart     also bring the MCP stack up
+    ./aki.sh tray                 normal launch
+    ./aki.sh tray --autostart     also bring the MCP stack up
 """
 
 import json
@@ -38,7 +38,9 @@ TRAY_LOG = LOG_DIR / "tray.log"
 UNIT_NAME = "aki-mcp.service"
 UNIT_PATH = Path.home() / ".config" / "systemd" / "user" / UNIT_NAME
 AUTOSTART_PATH = Path.home() / ".config" / "autostart" / "aki-mcp-tray.desktop"
-LAUNCHER = REPO_ROOT / "AKI-Tray.sh"
+# aki.sh is the single Linux entry point; "tray" is its subcommand for this script.
+LAUNCHER = REPO_ROOT / "aki.sh"
+LAUNCHER_ARGS = "tray"
 
 # Cloudflare's edge needs a moment to drop the old connector; restarting too fast serves 502s.
 RESTART_DELAY_MS = 6000
@@ -136,7 +138,7 @@ def write_autostart(show_icon, with_autostart):
         AUTOSTART_PATH.unlink(missing_ok=True)
         return
     AUTOSTART_PATH.parent.mkdir(parents=True, exist_ok=True)
-    exec_line = str(LAUNCHER) + (" --autostart" if with_autostart else "")
+    exec_line = f"{LAUNCHER} {LAUNCHER_ARGS}" + (" --autostart" if with_autostart else "")
     AUTOSTART_PATH.write_text(
         "[Desktop Entry]\n"
         "Type=Application\n"

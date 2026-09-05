@@ -4,6 +4,9 @@
 # Usage:
 #   ./aki.sh            # toggle
 #   ./aki.sh start|stop|restart|status
+#   ./aki.sh tray [--autostart]   # show the tray icon (needs PyQt6)
+#   ./aki.sh install [--no-tray]  # install or refresh the systemd unit, then start the tray
+#   ./aki.sh up                   # install if needed, start the stack, show the tray
 #
 # All configuration lives in .env, which start.js loads by itself. This script only reads the
 # ports back out of it for status reporting, so there is exactly one place to edit.
@@ -17,6 +20,7 @@ STATE_FILE="$USER_DIR/run-pids.json"
 PANEL_URL_FILE="$USER_DIR/panel-url.txt"
 LOG_DIR="$USER_DIR/logs"
 UNIT_NAME="aki-mcp.service"
+UNIT_PATH="$HOME/.config/systemd/user/$UNIT_NAME"
 
 mkdir -p "$LOG_DIR"
 
@@ -44,9 +48,9 @@ panel_url() {
   fi
 }
 
-# scripts/install-tray.sh installs a systemd --user unit. When that unit exists it owns the
+# scripts/install.sh installs a systemd --user unit. When that unit exists it owns the
 # stack, so this script delegates instead of spawning a second copy behind its back.
-use_systemd() { [[ -f "$HOME/.config/systemd/user/$UNIT_NAME" ]]; }
+use_systemd() { [[ -f "$UNIT_PATH" ]]; }
 
 state_pid() {
   [[ -f "$STATE_FILE" ]] || return 0
@@ -141,10 +145,48 @@ stop_stack() {
   echo "OFF"
 }
 
+# The tray lives here too rather than in its own launcher script: it is three lines of
+# preflight, and one entry point per platform is easier to document than four.
+launch_tray() {
+  if ! python3 -c 'import PyQt6.QtWidgets' 2>/dev/null; then
+    echo "PyQt6 is missing. Install it with:  sudo pacman -S --needed python-pyqt6" >&2
+    return 1
+  fi
+  # setsid detaches the tray from this shell, so closing the terminal never takes the icon with it.
+  setsid -f python3 "$REPO_ROOT/scripts/tray.py" "$@"
+}
+
+# Installation lives in its own script because it writes outside the repo (systemd unit,
+# desktop entry). Only the delegation lives here, so there is one command to remember.
+run_install() { "$REPO_ROOT/scripts/install.sh" "$@"; }
+
+# The unit merely existing is not enough: a unit left over from another checkout points
+# WorkingDirectory at that other repo, and `systemctl start` would happily boot the wrong
+# copy. Comparing the path is what makes `up` heal that case instead of repeating it.
+needs_install() {
+  [[ -f "$UNIT_PATH" ]] || return 0
+  ! grep -qx "WorkingDirectory=$REPO_ROOT" "$UNIT_PATH"
+}
+
+# One command for a fresh machine, and safe to re-run: install.sh and start_stack are both
+# idempotent, and tray.py holds a single-instance lock.
+bring_up() {
+  if needs_install; then
+    echo "installing systemd unit for $REPO_ROOT"
+    run_install "$@"
+  fi
+  is_running || start_stack
+  launch_tray || true
+  echo "PanelUrl:  $(panel_url)"
+}
+
 case "${1:-toggle}" in
   start)   start_stack ;;
   stop)    stop_stack ;;
   status)  get_status ;;
+  tray)    shift; launch_tray "$@" ;;
+  install) shift; run_install "$@" ;;
+  up)      shift; bring_up "$@" ;;
   restart)
     stop_stack
     # Cloudflare's edge needs a moment to drop the old connector; restarting too fast serves 502s.
@@ -155,7 +197,7 @@ case "${1:-toggle}" in
     if is_running; then stop_stack; else start_stack; fi
     ;;
   *)
-    echo "Usage: $0 {start|stop|restart|status|toggle}" >&2
+    echo "Usage: $0 {up|start|stop|restart|status|toggle|tray|install}" >&2
     exit 1
     ;;
 esac

@@ -7,7 +7,7 @@
 
   Usage:
     AKI-Tray.bat              hidden launch (normal use)
-    AKI-Tray-Debug.bat        visible console, shows errors
+    AKI-Tray.bat debug        visible console, shows errors
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tray.ps1 -AutoStart
 #>
 param([switch]$AutoStart)
