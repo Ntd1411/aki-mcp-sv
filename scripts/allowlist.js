@@ -12,6 +12,7 @@ const UNIX_DEFAULT = [
   'whoami', 'uname', 'uniq', 'cut', 'diff', 'jq',
   'basename', 'dirname', 'realpath', 'which', 'date', 'strings', 'uptime', 'pgrep',
   ['lsof', '-i'],
+  // npm run/test stay listed but are gated a second time in shell-mcp.js (script name, script body, no --prefix, hooks off): a package.json inside a writable root is otherwise a free exec surface.
   ['npm', 'list', 'ls', 'outdated', 'test', 'run'], ['npx', 'vitest'], ['pip', 'freeze', 'list'], ['node', '-v'],
   // fetch excluded — writes local refs, not read-only; ls-remote kept but shell-mcp.js requires zero extra args (its ext:: transport can smuggle code execution via a repository/URL argument).
   ['git', 'status', 'log', 'diff', 'show', 'branch', 'remote', 'blame', 'check-ignore', 'ls-files', 'rev-parse', 'tag', 'ls-remote', 'describe', 'shortlog', 'merge-base'],
