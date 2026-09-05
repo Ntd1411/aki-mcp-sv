@@ -24,6 +24,9 @@ const GEMINI_CALLBACK_PREFIX = 'https://oauth-redirect.googleusercontent.com/r/'
 // Grok self-registers (DCR) with this callback — observed live 2026-08-09 from the register-REJECTED log:
 // redirect_uris=["https://grok.com/connectors-oauth-exchange-code/"]. Note: NOT a /connector/oauth/ path.
 const GROK_CALLBACK_PREFIX = 'https://grok.com/connectors-oauth-exchange-code/';
+// Notion custom MCP connectors redirect to app.notion.com, not www.notion.so — prefix, since the
+// path carries a per-integration suffix. Ported from the local fork; not in upstream.
+const NOTION_CALLBACK_PREFIX = 'https://app.notion.com/workflows/mcp/oauth/callback';
 const CODE_TTL_MS = 5 * 60 * 1000;
 const ACCESS_TTL_S = 365 * 24 * 3600;
 // no 0/o/1/l/i — avoid visual ambiguity when typing; 32 chars = power of 2, unbiased byte%32
@@ -41,7 +44,8 @@ function isAllowedRedirect(uri) {
   if (uri === CLAUDE_CALLBACK || uri === CHATGPT_LEGACY_CALLBACK) return true;
   return uri.startsWith(CHATGPT_CALLBACK_PREFIX)
     || uri.startsWith(GROK_CALLBACK_PREFIX)
-    || uri.startsWith(GEMINI_CALLBACK_PREFIX);
+    || uri.startsWith(GEMINI_CALLBACK_PREFIX)
+    || uri.startsWith(NOTION_CALLBACK_PREFIX);
 }
 
 // Tokens survive restarts: the connector is a long-lived file-access grant, and losing it on every
